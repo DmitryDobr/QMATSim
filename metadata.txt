@@ -6,7 +6,7 @@
 name=QMatSim
 qgisMinimumVersion=3.0
 description=QGIS to MatSim
-version=0.1
+version=0.2
 author=Dmitry D.
 email=dmitrdobr@mail.ru
 
