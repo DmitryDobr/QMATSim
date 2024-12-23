@@ -1,7 +1,7 @@
 <RCC>
   <qresource prefix="/plugins/q_mat_sim">
-    <file>icon.png</file>
-    <file>iconNT.png</file>
-    <file>iconAG.png</file>
+    <file>icons/icon.png</file>
+    <file>icons/iconNT.png</file>
+    <file>icons/iconAG.png</file>
   </qresource>
 </RCC>
