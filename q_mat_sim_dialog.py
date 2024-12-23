@@ -103,6 +103,9 @@ class QMatSimDialog(QtWidgets.QDialog):
 
             # settings agent buttons connect
             self.pushButton_agents.clicked.connect(self.changeWidgetAgents)
+            self.pushButton_agentsCancel.clicked.connect(self.changeWidgetAgents)
+            self.pushButton_agentsOk.clicked.connect(self.saveAgentSettings)
+            
             # filters for layers pickers
             self.mMapLayerComboBox_acts.setFilters(QgsMapLayerProxyModel.PointLayer)
 
@@ -190,7 +193,6 @@ class QMatSimDialog(QtWidgets.QDialog):
         self.addActRow('h', minTime='01:00:00', maxTime='12:00:00')
         self.addActRow('w', minTime='05:00:00', maxTime='09:00:00')
         
-
     def addLogMessage(self, string): # insert log message to log textedit
         self.textEdit_log.append(string)
 
@@ -210,6 +212,13 @@ class QMatSimDialog(QtWidgets.QDialog):
         self.stackedWidget.setCurrentWidget(self.stackedWidgetPage1)
         self.reloadSettings()
 
+    def saveAgentSettings(self): # save Agents Settings
+        
+        if (self.reloadAgentSettings()):
+            self.stackedWidget.setCurrentWidget(self.stackedWidgetPage1)
+        else:
+            QtWidgets.QMessageBox.warning(None, 'Warning', 'Agents activity time table has no value act type row')
+        
     def reloadSettings(self): # reload network Settings
         self.taskSettings['AllLine2Sides'] = self.radioButton_2sided.isChecked()
         self.taskSettings['Attribute'] = self.mFieldComboBox_Oneway.currentField()
@@ -224,24 +233,35 @@ class QMatSimDialog(QtWidgets.QDialog):
         print(self.taskSettings)
     
     def reloadAgentSettings(self): # reload agent generator settings
-        self.agentSettings['AgentsCount'] = self.spinBox_agentNum.value()
-        self.agentSettings['ActCountMin'] = self.spinBox_actCountMin.value()
-        self.agentSettings['ActCountMax'] = self.spinBox_actCountMax.value()
-
+        flag = True
         actParams = dict()
         # (key 'h' value: list[minTime, maxTime])
         for i in range(0, self.tableWidget_actTime.rowCount()):
             timeList = list()
+            actName = self.tableWidget_actTime.item(i,0).text()
+            print(actName)
+            
+            if (actName == ""):
+                flag = False
+                break
 
             timeList.append(self.tableWidget_actTime.cellWidget(i,1).time()) # min time of act
             timeList.append(self.tableWidget_actTime.cellWidget(i,2).time()) # max time of act
 
-            actParams[str(self.tableWidget_actTime.itemAt(i,0).text())] = timeList
-        
-        self.agentSettings['ActMinMaxTime'] = actParams
+            actParams[str(actName)] = timeList
 
-        print(self.agentSettings)
-    
+        if (flag):
+            self.agentSettings['AgentsCount']   = self.spinBox_agentNum.value()
+            self.agentSettings['ActCountMin']   = self.spinBox_actCountMin.value()
+            self.agentSettings['ActCountMax']   = self.spinBox_actCountMax.value()
+            self.agentSettings['LastFirstAct']  = self.checkBox_lastAct.isChecked()
+            self.agentSettings['FirstActHome']  = self.checkBox_firstActH.isChecked()
+            self.agentSettings['ActMinMaxTime'] = actParams
+
+            print(self.agentSettings)
+        
+        return flag
+
     def getAgentSettings(self): # return current saved agent settings
         return self.agentSettings
     
@@ -261,11 +281,4 @@ class QMatSimDialog(QtWidgets.QDialog):
         self.tabWidget_xml.setCurrentWidget(self.tab_output)
         self.progressBar.setValue(0)
         self.pushButton_saveFile.setEnabled(False)
-        
-
-        
-
-        
-
-        
-
+    

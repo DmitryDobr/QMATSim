@@ -209,7 +209,7 @@ p, li { white-space: pre-wrap; }
               </sizepolicy>
              </property>
              <property name="text">
-              <string>Settings</string>
+              <string>Network Settings</string>
              </property>
             </widget>
            </item>
@@ -296,7 +296,7 @@ p, li { white-space: pre-wrap; }
               <string>xml (*.xml)</string>
              </property>
              <property name="storageMode">
-              <enum>QgsFileWidget::GetFile</enum>
+              <enum>QgsFileWidget::SaveFile</enum>
              </property>
             </widget>
            </item>
@@ -636,6 +636,7 @@ p, li { white-space: pre-wrap; }
    <class>QgsFileWidget</class>
    <extends>QWidget</extends>
    <header>qgsfilewidget.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>QgsMapLayerComboBox</class>

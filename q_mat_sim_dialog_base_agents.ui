@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>722</width>
-    <height>690</height>
+    <width>598</width>
+    <height>681</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -36,7 +36,7 @@
        <item row="1" column="0" colspan="2">
         <widget class="QStackedWidget" name="stackedWidget">
          <property name="currentIndex">
-          <number>2</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="stackedWidgetPage1">
           <layout class="QGridLayout" name="gridLayout_6">
@@ -348,7 +348,7 @@ p, li { white-space: pre-wrap; }
               <string>xml (*.xml)</string>
              </property>
              <property name="storageMode">
-              <enum>QgsFileWidget::GetFile</enum>
+              <enum>QgsFileWidget::SaveFile</enum>
              </property>
             </widget>
            </item>
@@ -682,6 +682,28 @@ p, li { white-space: pre-wrap; }
               <string>Agents</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_12">
+              <item row="1" column="3">
+               <widget class="QLabel" name="label_16">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>35</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>to</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
               <item row="1" column="2">
                <widget class="QSpinBox" name="spinBox_actCountMin">
                 <property name="minimumSize">
@@ -692,6 +714,57 @@ p, li { white-space: pre-wrap; }
                 </property>
                 <property name="minimum">
                  <number>2</number>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="label_14">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>165</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>Number of activities at plan</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="4">
+               <widget class="QSpinBox" name="spinBox_actCountMax">
+                <property name="minimumSize">
+                 <size>
+                  <width>100</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="minimum">
+                 <number>2</number>
+                </property>
+                <property name="value">
+                 <number>3</number>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="3" colspan="2">
+               <widget class="QSpinBox" name="spinBox_agentNum">
+                <property name="minimumSize">
+                 <size>
+                  <width>100</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="minimum">
+                 <number>1</number>
+                </property>
+                <property name="maximum">
+                 <number>100000</number>
                 </property>
                </widget>
               </item>
@@ -717,41 +790,6 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="1" column="4">
-               <widget class="QSpinBox" name="spinBox_actCountMax">
-                <property name="minimumSize">
-                 <size>
-                  <width>100</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="minimum">
-                 <number>2</number>
-                </property>
-                <property name="value">
-                 <number>3</number>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QLabel" name="label_14">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>165</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="text">
-                 <string>Number of activities at plan</string>
-                </property>
-               </widget>
-              </item>
               <item row="0" column="0">
                <widget class="QLabel" name="label_15">
                 <property name="sizePolicy">
@@ -771,41 +809,17 @@ p, li { white-space: pre-wrap; }
                 </property>
                </widget>
               </item>
-              <item row="1" column="3">
-               <widget class="QLabel" name="label_16">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="minimumSize">
-                 <size>
-                  <width>35</width>
-                  <height>0</height>
-                 </size>
-                </property>
+              <item row="2" column="0">
+               <widget class="QCheckBox" name="checkBox_lastAct">
                 <property name="text">
-                 <string>to</string>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                 <string>Last activity equals first</string>
                 </property>
                </widget>
               </item>
-              <item row="0" column="3" colspan="2">
-               <widget class="QSpinBox" name="spinBox_agentNum">
-                <property name="minimumSize">
-                 <size>
-                  <width>100</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="minimum">
-                 <number>1</number>
-                </property>
-                <property name="maximum">
-                 <number>100000</number>
+              <item row="2" column="2">
+               <widget class="QCheckBox" name="checkBox_firstActH">
+                <property name="text">
+                 <string>First activity is home</string>
                 </property>
                </widget>
               </item>

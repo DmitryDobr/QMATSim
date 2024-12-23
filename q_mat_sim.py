@@ -231,7 +231,7 @@ class QMatSim:
             self.agfirst_start = False
             self.agdlg = QMatSimDialog(mode='agents')
 
-            #self.agdlg.pushButton_create.clicked.connect(self.startTask)
+            self.agdlg.pushButton_create.clicked.connect(self.startAgentTask)
             self.agdlg.pushButton_saveFile.clicked.connect(self.saveXmlFile)
 
             self.agdlg.pushButton_createNodes.clicked.connect(self.createNodes)
@@ -299,16 +299,30 @@ class QMatSim:
         root.setAttribute('name', "equil test network")
         self.doc.appendChild(root)
 
-        taskParams = self.dlg.getSettings() ## dict of network creation settings
+        NetworkTaskParams = self.dlg.getSettings() ## dict of network creation settings
 
-        newTask = NodeXmlTask(self.doc, self.dlg.mMapLayerComboBox_nodes.currentLayer(), taskParams)
+        newTask = NodeXmlTask(self.doc, self.dlg.mMapLayerComboBox_nodes.currentLayer(), NetworkTaskParams)
         newTask.printLog.connect(self.printLog)
         self.task_manager.addTask(newTask)
 
-        newTask = LinkXmlTask(self.doc, self.dlg.mMapLayerComboBox_links.currentLayer(), self.dlg.mMapLayerComboBox_nodes.currentLayer(), taskParams)
+        newTask = LinkXmlTask(self.doc, self.dlg.mMapLayerComboBox_links.currentLayer(), self.dlg.mMapLayerComboBox_nodes.currentLayer(), NetworkTaskParams)
         newTask.printLog.connect(self.printLog)
         self.task_manager.addTask(newTask)
     
+    def startAgentTask(self): # points-lines + points to agents MATSim xml task
+        self.dlg.progressBar.setValue(0)
+        self.dlg.textEdit_xmlOutput.clear()
+        self.dlg.textEdit_log.clear()
+
+        self.doc = QtXml.QDomDocument()
+
+        root = self.doc.createElement("plans") # QDomElement
+        root.setAttribute('xml:lang', "de-CH")
+        self.doc.appendChild(root)
+
+        NetworkTaskParams = self.dlg.getSettings() ## dict of network creation settings
+        AgentTaskParams = self.dlg.getAgentSettings() ## dict of agent generation settings
+
     def printLog(self, string):
         self.dlg.textEdit_log.append(string)
 
@@ -317,15 +331,13 @@ class QMatSim:
             if (self.task_manager.task(taskId).description() == LINE_LINK_XML_TASK_DESCRIPTION):
                 self.LinksResult = self.task_manager.task(taskId).resultDom
 
-                #print(self.task_manager.task(taskId).matrix)
-                #np.save(self.plugin_dir + '/my_array_temp.npy', self.task_manager.task(taskId).matrix)
-                #print('saved')
-
             if (self.task_manager.task(taskId).description() == POINT_NODE_XML_TASK_DESCRIPTION):
                 self.NodesResult = self.task_manager.task(taskId).resultDom
 
             if (self.NodesResult != None and self.LinksResult != None): # node and link xml task finished with result
                 
+                self.iface.messageBar().pushMessage("Success", "XML Network created", level=Qgis.Success, duration=6)
+
                 root = self.doc.elementsByTagName("network").item(0) # QDomElement
 
                 root.appendChild(self.NodesResult)
@@ -337,6 +349,7 @@ class QMatSim:
                 self.dlg.pushButton_saveFile.setEnabled(True)
                 
         if (status == 4):
+            self.iface.messageBar().pushMessage("Critical", "Error occured during task", level=Qgis.Critical, duration=6)
             self.dlg.tabWidget_xml.setCurrentWidget(self.dlg.tab_log)
             for task in self.task_manager.activeTasks():
                 task.cancel()
@@ -349,8 +362,13 @@ class QMatSim:
         file.open(QIODevice.WriteOnly | QIODevice.Text)
         stream = QTextStream(file)
         stream << '<?xml version="1.0" encoding="utf-8"?>\n'
-        stream << '<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v1.dtd">\n'
+        if (self.dlg == self.ntdlg):
+            stream << '<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v1.dtd">\n'
+        else:
+            stream << '<!DOCTYPE plans SYSTEM "http://www.matsim.org/files/dtd/plans_v4.dtd">\n'
         stream << self.doc.toString()
         file.close()
+
+        self.iface.messageBar().pushMessage("Saved", "XML File saved", level=Qgis.Success, duration=6)
 
 
