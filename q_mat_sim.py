@@ -32,7 +32,7 @@ from .resources import *
 from .q_mat_sim_dialog import QMatSimDialog
 import os.path
 
-from .q_mat_sim_tasks import NodeXmlTask, LinkXmlTask, LINE_LINK_XML_TASK_DESCRIPTION, POINT_NODE_XML_TASK_DESCRIPTION
+from .q_mat_sim_tasks import *
 
 from qgis.core import (
     Qgis,
@@ -173,12 +173,12 @@ class QMatSim:
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
         #icon_path = ':/plugins/q_mat_sim/icon.png'
 
-        self.add_action(':/plugins/q_mat_sim/iconNT.png',
+        self.add_action(':/plugins/q_mat_sim/icons/iconNT.png',
             text=self.tr(u'QMatSim Network'),
             callback=self.runNetworkEditor,
             parent=self.iface.mainWindow())
         
-        self.add_action(':/plugins/q_mat_sim/iconAG.png',
+        self.add_action(':/plugins/q_mat_sim/icons/iconAG.png',
             text=self.tr(u'QMatSim Agents'),
             callback=self.runAgentEditor,
             parent=self.iface.mainWindow())
@@ -305,7 +305,7 @@ class QMatSim:
         newTask.printLog.connect(self.printLog)
         self.task_manager.addTask(newTask)
 
-        newTask = LinkXmlTask(self.doc, self.dlg.mMapLayerComboBox_links.currentLayer(), self.dlg.mMapLayerComboBox_nodes.currentLayer(), NetworkTaskParams)
+        newTask = LinkXmlTaskV2(self.doc, self.dlg.mMapLayerComboBox_links.currentLayer(), self.dlg.mMapLayerComboBox_nodes.currentLayer(), NetworkTaskParams)
         newTask.printLog.connect(self.printLog)
         self.task_manager.addTask(newTask)
     
@@ -370,5 +370,3 @@ class QMatSim:
         file.close()
 
         self.iface.messageBar().pushMessage("Saved", "XML File saved", level=Qgis.Success, duration=6)
-
-

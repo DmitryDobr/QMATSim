@@ -45,8 +45,10 @@ import math
 
 POINT_NODE_XML_TASK_DESCRIPTION = "POINT_NODE_XML_TASK"
 LINE_LINK_XML_TASK_DESCRIPTION = "LINE_LINK_XML_TASK"
+LINE_LINK_NMP_TASK_DESCRIPTION = "LINE_LINK_ARRAY_TASK"
+AGENT_XML_TASK_DESCRIPTION = "AGENT_XML_TASK"
 
-class XmlBase():
+class XmlBase(): # Base to create XML elements indide parent with given names
       def __init__(self, doc, ParentNodeName = "nodes", ChildNodeName = "node"):
             self.__doc = doc # QDomDocument()
             self.resultDom = doc.createElement(ParentNodeName) # QDomElement
@@ -60,7 +62,7 @@ class XmlBase():
 
             self.resultDom.appendChild(childNode)
 
-class TaskBase(QgsTask):
+class FeatureTaskBase(QgsTask): # Task base with feature iteration
       printLog = pyqtSignal(str)
 
       def __init__(self, description, layer, IdValOnLayer = True, IdAttr = 'id'):
@@ -72,13 +74,28 @@ class TaskBase(QgsTask):
             self.FCount = layer.featureCount() # count of features
 
             self.currentId = 0 # current processing feature ID
+            self.IdAttrName = IdAttr
+            '''
+            {
+                  'AllLine2Sides': False, - linetask
+                  'Attribute': 'oneway', - linetask
+                  'OneWayVal': '1',  - linetask
+                  'TwoSidedVal': '0',  - linetask
+                  'DefaultOneWay': 1,  - linetask
+
+                  'IdValOnLayer': False, - basetask
+
+                  'PointAttr': 'id', - pointtask
+                  'LineAttr': 'id' - linetask
+            }
+            '''
       
       def run(self):
             self.printLog.emit(f'[INFO]:[{self.description()}] => Task run.')
 
             counter = 0
             for feature in self.features:
-                  self.currentId = int(feature.id()) if self.flagAutoId else int(feature.attribute('id'))
+                  self.currentId = int(feature.id()) if self.flagAutoId else int(feature.attribute(self.IdAttrName))
                   self.sendFeatureLog('Processing.',0)
 
                   self.processFeature(feature)
@@ -112,13 +129,13 @@ class TaskBase(QgsTask):
             self.printLog.emit(f'[INFO]:[{self.description()}] => Task cancel.')
             super().cancel()
 
-class NodeXmlTask(XmlBase, TaskBase):
+class NodeXmlTask(XmlBase, FeatureTaskBase): # task to create XML nodes from points
       def __init__(self, document, pointVectorLayer, taskSettings):
             XmlBase.__init__(self, doc=document, ParentNodeName="nodes", ChildNodeName="node")
-            TaskBase.__init__(self, description=POINT_NODE_XML_TASK_DESCRIPTION, layer=pointVectorLayer, 
+            FeatureTaskBase.__init__(self, description=POINT_NODE_XML_TASK_DESCRIPTION, layer=pointVectorLayer, 
                               IdValOnLayer=taskSettings['IdValOnLayer'],IdAttr=taskSettings['PointAttr'])
             
-      def processFeature(self, feature): # override
+      def processFeature(self, feature): # overrided
             point = feature.geometry().asPoint()
             params = dict({
                   'id': int(self.currentId),
@@ -128,10 +145,125 @@ class NodeXmlTask(XmlBase, TaskBase):
 
             self.addChildNode(params)
 
-class LinkXmlTask(XmlBase, TaskBase):
+class LineTaskBase(FeatureTaskBase): # task base for network instruments 
+      def __init__(self, lineVectorLayer, pointVectorLayer, taskSettings):
+            FeatureTaskBase.__init__(self, description=LINE_LINK_XML_TASK_DESCRIPTION, layer=lineVectorLayer, 
+                              IdValOnLayer=taskSettings['IdValOnLayer'], IdAttr=taskSettings['LineAttr'])
+           
+            self.MaxLineId = -1 # id for reversed lines
+
+            if (self.flagAutoId): # use feature number in layer
+                  self.MaxLineId = lineVectorLayer.featureCount() + 1
+            else: # use field
+                  idx = lineVectorLayer.fields().lookupField(taskSettings['LineAttr'])
+                  self.MaxLineId = lineVectorLayer.maximumValue(idx) + 1
+
+            self.TaskParams = taskSettings # network settings
+            self.DefaultTwoWay = taskSettings['DefaultTwoWay']
+
+            self.points = pointVectorLayer
+            self.ToleranceVector = QgsVector(0.05,0.05) # vector for QgsRectangle extent search for points
+      
+      def defineNearNodeID(self, point): # define nearest node id from point layer to given point
+            foundId = None
+
+            request = QgsFeatureRequest(QgsRectangle(point - self.ToleranceVector, point + self.ToleranceVector))
+            request.setFlags(QgsFeatureRequest.ExactIntersect)
+
+            for PFeature in self.points.getFeatures(request): # QgsFeatureIterator
+                  foundId = PFeature.id() if self.flagAutoId else PFeature.attribute('id')
+                  if (PFeature.geometry().asPoint() == point):
+                        break
+            
+            if (foundId is None):
+                  self.sendFeatureLog(f'not found node at point: POINT({round(point.x(),3)},{round(point.y(),3)})', 2)
+                  self.cancel()
+                  return -1
+            else:
+                  return int(foundId)
+      
+      def processFeature(self, feature): # overrided
+            linePoints = None
+            # check geometry
+            if (feature.geometry().wkbType() == QgsWkbTypes.LineString):
+                  linePoints = feature.geometry().asPolyline()
+            else:
+                  linePoints = feature.geometry().asMultiPolyline()[0]
+
+            if len(linePoints) != 2:
+                  self.sendFeatureLog('2+ point lines not supported', 2)
+                  self.cancel()
+                  return
+
+            # define nearest nodes ids from point layers
+            idFrom = self.defineNearNodeID(linePoints[0])
+            idTo = self.defineNearNodeID(linePoints[1])
+
+            flagTwoSides = True
+
+            if (not self.TaskParams['AllLine2Sides']): # if not every line is two sided
+                  onewayval = feature.attribute(self.TaskParams['Attribute']) # get value of oneway attribute from feature
+
+                  if (str(onewayval) == self.TaskParams['OneWayVal']):
+                        flagTwoSides = False
+                  elif (str(onewayval) == self.TaskParams['TwoSidedVal']):
+                        flagTwoSides = True
+                  else:
+                        flagTwoSides = self.DefaultTwoWay
+            
+            self.processLine(feature, idFrom, idTo, flagTwoSides)
+      
+      def processLine(self, feature, idFrom, idTo, TwoSides): # override
+            pass
+
+class LinkXmlTaskV2(XmlBase, LineTaskBase): # task to create XML links from lines and points
       def __init__(self, document, lineVectorLayer, pointVectorLayer, taskSettings):
             XmlBase.__init__(self, doc=document, ParentNodeName="links", ChildNodeName="link")
-            TaskBase.__init__(self, description=LINE_LINK_XML_TASK_DESCRIPTION, layer=lineVectorLayer, 
+            LineTaskBase.__init__(self, lineVectorLayer, pointVectorLayer, taskSettings)
+      
+      def processLine(self, feature, idFrom, idTo, TwoSides): # override
+            # get line attributes
+            freespeed = feature.attribute('freespeed')
+            if (freespeed == None or freespeed <= 0.0):
+                  self.sendFeatureLog('Not set freespeed. Default=20.0', 1)
+                  freespeed = 20.0
+            
+            capacity = feature.attribute('capacity')
+            if (capacity == None or capacity <= 0):
+                  self.sendFeatureLog('Not set capacity. Default=3600', 1)
+                  capacity = 3600
+
+            permlanes = feature.attribute('permlanes')
+            if (permlanes == None or permlanes <= 0):
+                  self.sendFeatureLog('Not set permlanes. Default=1', 1)
+                  permlanes = 1
+
+            # XML link params
+            params = dict({
+                  'id': int(self.currentId),
+                  'from': idFrom,
+                  'to': idTo,
+                  'freespeed': freespeed,
+                  'length': round((feature.geometry().length()),3),
+                  'capacity': int(capacity),
+                  'permlanes': int(permlanes)
+            })
+
+            self.addChildNode(params)
+            # two sided link
+            if (TwoSides):
+                  params['id'] = int(self.MaxLineId)
+                  params['from'] = idTo
+                  params['to'] = idFrom
+
+                  self.addChildNode(params)
+
+                  self.MaxLineId += 1
+
+class LinkXmlTask(XmlBase, FeatureTaskBase): # deprecated
+      def __init__(self, document, lineVectorLayer, pointVectorLayer, taskSettings):
+            XmlBase.__init__(self, doc=document, ParentNodeName="links", ChildNodeName="link")
+            FeatureTaskBase.__init__(self, description=LINE_LINK_XML_TASK_DESCRIPTION, layer=lineVectorLayer, 
                               IdValOnLayer=taskSettings['IdValOnLayer'], IdAttr=taskSettings['LineAttr'])
             
             self.MaxLineId = -1 # id for reversed lines
@@ -155,7 +287,11 @@ class LinkXmlTask(XmlBase, TaskBase):
                   |  \|
                   +---0
             '''
-            
+            # self.points.featureCount()
+            #self.matrix = np.full((self.points.featureCount(),self.points.featureCount()), 0)
+
+            # print(self.matrix)
+
       def defineNearNodeID(self, point):
             foundId = None
 
@@ -191,19 +327,21 @@ class LinkXmlTask(XmlBase, TaskBase):
             idTo = self.defineNearNodeID(points[1])
 
             freespeed = feature.attribute('freespeed')
-            if (freespeed == None or freespeed < 0):
+            if (freespeed == None or freespeed <= 0.0):
                   self.sendFeatureLog('Not set freespeed. Default=20.0', 1)
                   freespeed = 20.0
             
             capacity = feature.attribute('capacity')
-            if (capacity == None or capacity < 0):
-                  self.sendFeatureLog('Not set capacity. Default=10', 1)
-                  capacity = 10
+            if (capacity == None or capacity <= 0):
+                  self.sendFeatureLog('Not set capacity. Default=3600', 1)
+                  capacity = 3600
 
             permlanes = feature.attribute('permlanes')
-            if (permlanes == None or permlanes < 0):
+            if (permlanes == None or permlanes <= 0):
                   self.sendFeatureLog('Not set permlanes. Default=1', 1)
                   permlanes = 1
+
+            # self.matrix[idFrom - 1 ,idTo  - 1] = self.currentId
 
             params = dict({
                   'id': int(self.currentId),
@@ -237,3 +375,5 @@ class LinkXmlTask(XmlBase, TaskBase):
                   self.addChildNode(params)
 
                   self.MaxLineId += 1
+
+                  #self.matrix[idTo - 1, idFrom - 1] = int(self.MaxLineId)
