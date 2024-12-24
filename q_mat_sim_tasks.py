@@ -41,7 +41,7 @@ from qgis.core import (
 
 from qgis.PyQt import QtXml
 import math
-#import numpy as np
+import numpy as np
 
 POINT_NODE_XML_TASK_DESCRIPTION = "POINT_NODE_XML_TASK"
 LINE_LINK_XML_TASK_DESCRIPTION = "LINE_LINK_XML_TASK"
@@ -67,7 +67,7 @@ class FeatureTaskBase(QgsTask): # Task base with feature iteration
 
       def __init__(self, description, layer, IdValOnLayer = True, IdAttr = 'id'):
             super().__init__(description, QgsTask.CanCancel)
-            self.flagAutoId = IdValOnLayer # identify id with attribute or .id()
+            self.flagAutoId = IdValOnLayer # identify id with attribute or .id() / $id
             self.IdAttributeName = IdAttr 
 
             self.features = layer.getFeatures() # list of features to process
@@ -146,8 +146,8 @@ class NodeXmlTask(XmlBase, FeatureTaskBase): # task to create XML nodes from poi
             self.addChildNode(params)
 
 class LineTaskBase(FeatureTaskBase): # task base for network instruments 
-      def __init__(self, lineVectorLayer, pointVectorLayer, taskSettings):
-            FeatureTaskBase.__init__(self, description=LINE_LINK_XML_TASK_DESCRIPTION, layer=lineVectorLayer, 
+      def __init__(self, TaskDescription, lineVectorLayer, pointVectorLayer, taskSettings):
+            FeatureTaskBase.__init__(self, description=TaskDescription, layer=lineVectorLayer, 
                               IdValOnLayer=taskSettings['IdValOnLayer'], IdAttr=taskSettings['LineAttr'])
            
             self.MaxLineId = -1 # id for reversed lines
@@ -216,10 +216,35 @@ class LineTaskBase(FeatureTaskBase): # task base for network instruments
       def processLine(self, feature, idFrom, idTo, TwoSides): # override
             pass
 
+class NetworkArrayTask(LineTaskBase): # task to create numpy array of network from lines and points
+      def __init__(self, lineVectorLayer, pointVectorLayer, taskSettings):
+            LineTaskBase.__init__(self, LINE_LINK_NMP_TASK_DESCRIPTION, lineVectorLayer, pointVectorLayer, taskSettings)
+
+            self.matrix = np.full((self.points.featureCount(),self.points.featureCount()), -1)
+            # matrix representation of network
+            # nodes $id as rows/columns
+            # links original with settings numbers as [row, col] values if there is a way from to node
+            self.lineUseAutoId = self.flagAutoId
+            self.flagAutoId = True # rewrite base class definition to use only $id for points
+      
+      def processLine(self, feature, idFrom, idTo, TwoSides): # override
+            
+            lineId = self.currentId
+            if (not self.lineUseAutoId):
+                  lineId = feature.attribute(self.IdAttrName)
+
+            print(idFrom, idTo, lineId)
+
+            self.matrix[idFrom - 1,idTo  - 1] = lineId
+
+            if (TwoSides):
+                  self.matrix[idTo - 1, idFrom - 1] = int(self.MaxLineId)
+                  self.MaxLineId += 1
+            
 class LinkXmlTaskV2(XmlBase, LineTaskBase): # task to create XML links from lines and points
       def __init__(self, document, lineVectorLayer, pointVectorLayer, taskSettings):
             XmlBase.__init__(self, doc=document, ParentNodeName="links", ChildNodeName="link")
-            LineTaskBase.__init__(self, lineVectorLayer, pointVectorLayer, taskSettings)
+            LineTaskBase.__init__(self, LINE_LINK_XML_TASK_DESCRIPTION, lineVectorLayer, pointVectorLayer, taskSettings)
       
       def processLine(self, feature, idFrom, idTo, TwoSides): # override
             # get line attributes
@@ -287,10 +312,6 @@ class LinkXmlTask(XmlBase, FeatureTaskBase): # deprecated
                   |  \|
                   +---0
             '''
-            # self.points.featureCount()
-            #self.matrix = np.full((self.points.featureCount(),self.points.featureCount()), 0)
-
-            # print(self.matrix)
 
       def defineNearNodeID(self, point):
             foundId = None
@@ -341,8 +362,6 @@ class LinkXmlTask(XmlBase, FeatureTaskBase): # deprecated
                   self.sendFeatureLog('Not set permlanes. Default=1', 1)
                   permlanes = 1
 
-            # self.matrix[idFrom - 1 ,idTo  - 1] = self.currentId
-
             params = dict({
                   'id': int(self.currentId),
                   'from': idFrom,
@@ -375,5 +394,3 @@ class LinkXmlTask(XmlBase, FeatureTaskBase): # deprecated
                   self.addChildNode(params)
 
                   self.MaxLineId += 1
-
-                  #self.matrix[idTo - 1, idFrom - 1] = int(self.MaxLineId)

@@ -323,6 +323,10 @@ class QMatSim:
         NetworkTaskParams = self.dlg.getSettings() ## dict of network creation settings
         AgentTaskParams = self.dlg.getAgentSettings() ## dict of agent generation settings
 
+        createArrTask = NetworkArrayTask(self.dlg.mMapLayerComboBox_links.currentLayer(), self.dlg.mMapLayerComboBox_nodes.currentLayer(), NetworkTaskParams)
+        createArrTask.printLog.connect(self.printLog)
+        self.task_manager.addTask(createArrTask)
+
     def printLog(self, string):
         self.dlg.textEdit_log.append(string)
 
@@ -347,6 +351,9 @@ class QMatSim:
                 self.dlg.textEdit_xmlOutput.append(self.doc.toString())
                 
                 self.dlg.pushButton_saveFile.setEnabled(True)
+
+            if (self.task_manager.task(taskId).description() == LINE_LINK_NMP_TASK_DESCRIPTION):
+                print(self.task_manager.task(taskId).matrix)
                 
         if (status == 4):
             self.iface.messageBar().pushMessage("Critical", "Error occured during task", level=Qgis.Critical, duration=6)
