@@ -51,7 +51,7 @@ class HighlightingRule():
         self.pattern = expression
         self.format = format
 
-class Highlighter(QSyntaxHighlighter):
+class Highlighter(QSyntaxHighlighter): # highlighter for xml document
     def __init__(self, parent):
         super().__init__(parent)
         self.HighlightRules: list[HighlightingRule] = [] # HighlightingRule
@@ -122,7 +122,7 @@ class QMatSimDialog(QtWidgets.QDialog):
 
         document = self.textEdit_help.document()
         cursor = QTextCursor(document)
-        cursor.insertImage(os.path.dirname(__file__) + '/icon_small.png')
+        cursor.insertImage(os.path.dirname(__file__) + '/icons/icon_small.png')
 
         # filters for layers pickers
         self.mMapLayerComboBox_links.setFilters(QgsMapLayerProxyModel.LineLayer)
@@ -251,12 +251,14 @@ class QMatSimDialog(QtWidgets.QDialog):
             actParams[str(actName)] = timeList
 
         if (flag):
-            self.agentSettings['AgentsCount']   = self.spinBox_agentNum.value()
-            self.agentSettings['ActCountMin']   = self.spinBox_actCountMin.value()
-            self.agentSettings['ActCountMax']   = self.spinBox_actCountMax.value()
-            self.agentSettings['LastFirstAct']  = self.checkBox_lastAct.isChecked()
-            self.agentSettings['FirstActHome']  = self.checkBox_firstActH.isChecked()
-            self.agentSettings['ActMinMaxTime'] = actParams
+            self.agentSettings['AgentsCount']   = self.spinBox_agentNum.value()       # number of agents in population
+            self.agentSettings['ActCountMin']   = self.spinBox_actCountMin.value()    # minimum count of acts per plan
+            self.agentSettings['ActCountMax']   = self.spinBox_actCountMax.value()    # maximum count of acts per plan
+            self.agentSettings['LastFirstAct']  = self.checkBox_lastAct.isChecked()   # first act equals last
+            self.agentSettings['FirstActHome']  = self.checkBox_firstActH.isChecked() # first act is 'h'
+            self.agentSettings['FirstActMin']   = self.timeEdit_firstActDurMin.time() # min time limit for first act end_time
+            self.agentSettings['FirstActMax']   = self.timeEdit_firstActDurMax.time() # max time limit for first act end_time
+            self.agentSettings['ActMinMaxTime'] = actParams                           # time limits for acts type
 
             print(self.agentSettings)
         

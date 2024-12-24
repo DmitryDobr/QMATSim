@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>598</width>
+    <width>605</width>
     <height>681</height>
    </rect>
   </property>
@@ -36,7 +36,7 @@
        <item row="1" column="0" colspan="2">
         <widget class="QStackedWidget" name="stackedWidget">
          <property name="currentIndex">
-          <number>0</number>
+          <number>2</number>
          </property>
          <widget class="QWidget" name="stackedWidgetPage1">
           <layout class="QGridLayout" name="gridLayout_6">
@@ -855,7 +855,22 @@ p, li { white-space: pre-wrap; }
                </widget>
               </item>
               <item row="0" column="2">
-               <widget class="QTimeEdit" name="timeEdit"/>
+               <widget class="QTimeEdit" name="timeEdit_firstActDurMin">
+                <property name="minimumTime">
+                 <time>
+                  <hour>0</hour>
+                  <minute>5</minute>
+                  <second>0</second>
+                 </time>
+                </property>
+                <property name="time">
+                 <time>
+                  <hour>6</hour>
+                  <minute>0</minute>
+                  <second>0</second>
+                 </time>
+                </property>
+               </widget>
               </item>
               <item row="0" column="3">
                <widget class="QLabel" name="label_20">
@@ -894,7 +909,7 @@ p, li { white-space: pre-wrap; }
                  </size>
                 </property>
                 <property name="text">
-                 <string>Agents activity time</string>
+                 <string>Agents activity duration time</string>
                 </property>
                </widget>
               </item>
@@ -957,15 +972,15 @@ p, li { white-space: pre-wrap; }
                  </size>
                 </property>
                 <property name="text">
-                 <string>Simulation time</string>
+                 <string>First activity end time</string>
                 </property>
                </widget>
               </item>
               <item row="0" column="4">
-               <widget class="QTimeEdit" name="timeEdit_2">
+               <widget class="QTimeEdit" name="timeEdit_firstActDurMax">
                 <property name="time">
                  <time>
-                  <hour>23</hour>
+                  <hour>12</hour>
                   <minute>0</minute>
                   <second>0</second>
                  </time>
