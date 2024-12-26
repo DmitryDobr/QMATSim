@@ -32,9 +32,6 @@ from qgis.core import (
     QgsApplication
 )
 
-import numpy as np 
-import heapq
-
 # from qgis.PyQt import QtXml
 from qgis.PyQt.QtGui import QTextCursor, QSyntaxHighlighter, QFont, QTextCharFormat, QColor, QIcon
 from qgis.PyQt.QtCore import Qt, QRegularExpression, QRegularExpressionMatchIterator, QObject, QRegExp, QTime

@@ -40,8 +40,9 @@ from qgis.core import (
 )
 
 from qgis.PyQt import QtXml
-import math
+
 import numpy as np
+import heapq, random
 
 POINT_NODE_XML_TASK_DESCRIPTION = "POINT_NODE_XML_TASK"
 LINE_LINK_XML_TASK_DESCRIPTION = "LINE_LINK_XML_TASK"
@@ -284,6 +285,54 @@ class LinkXmlTaskV2(XmlBase, LineTaskBase): # task to create XML links from line
                   self.addChildNode(params)
 
                   self.MaxLineId += 1
+
+class XmlBaseV2(): # Base to quickly create XML elements
+      def __init__(self, doc, startDomName):
+            self.__doc = doc # QDomDocument()
+            self.DomElementStack = list()
+
+            self.rootDom = self.doc.elementsByTagName(startDomName).item(0) # QDomElement
+      
+      def applyToRootDom(self): # set element at the end of stack as child for root element
+            self.rootDom.appendChild(self.DomElementStack[-1])
+      
+      def createDomAtStack(self, domName: str): # create new element at the end of stack
+            elem = self.__doc.createElement(domName)
+            self.DomElementStack.append(elem)
+      
+      def addAttributesAtLastDomAtStack(self, params: dict): # add attributes to element at the end of stack
+            for key, value in params.items():
+                  self.DomElementStack[-1].setAttribute(key, str(value))
+
+      def addTextNodeToLastDomAtStack(self, text: str): # insert text to element at the end of stack
+            tx = self.__doc.createTextNode(text)
+            self.DomElementStack[-1].appendChild(tx)
+
+      def appendLastDomAtStack(self): # set element at the end of stack as child for element before and delete it from stack
+            self.DomElementStack[-2].appendChild(self.DomElementStack[-1])
+            self.DomElementStack.pop()
+
+class AgentXmlTask(XmlBaseV2, QgsTask):
+      printLog = pyqtSignal(str)
+      
+      def __init__(self, document, nodesLayer, actsLayer, matrix, taskSettings):
+            XmlBaseV2.__init__(self, doc=document, startDomName="plans") # append final <person> element to <plans> root element
+            QgsTask.__init__(AGENT_XML_TASK_DESCRIPTION, QgsTask.CanCancel)
+
+            self.agCount = taskSettings['AgentsCount']
+
+      def run(self):
+            for i in range(1,self.agCount+1):
+                  pass
+
+      def finished(self, result):
+            self.printLog.emit(f'[INFO]:[{self.description()}] => Task finished.')
+            self.result = result
+    
+      def cancel(self):
+            self.printLog.emit(f'[INFO]:[{self.description()}] => Task cancel.')
+            super().cancel()
+
 
 class LinkXmlTask(XmlBase, FeatureTaskBase): # deprecated
       def __init__(self, document, lineVectorLayer, pointVectorLayer, taskSettings):
