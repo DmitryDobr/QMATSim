@@ -291,7 +291,7 @@ class XmlBaseV2(): # Base to quickly create XML elements
             self.__doc = doc # QDomDocument()
             self.DomElementStack = list()
 
-            self.rootDom = self.doc.elementsByTagName(startDomName).item(0) # QDomElement
+            self.rootDom = self.__doc.elementsByTagName(startDomName).item(0) # QDomElement
       
       def applyToRootDom(self): # set element at the end of stack as child for root element
             self.rootDom.appendChild(self.DomElementStack[-1])
@@ -317,13 +317,19 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
       
       def __init__(self, document, nodesLayer, actsLayer, matrix, taskSettings):
             XmlBaseV2.__init__(self, doc=document, startDomName="plans") # append final <person> element to <plans> root element
-            QgsTask.__init__(AGENT_XML_TASK_DESCRIPTION, QgsTask.CanCancel)
+            QgsTask.__init__(self, AGENT_XML_TASK_DESCRIPTION, QgsTask.CanCancel)
 
             self.agCount = taskSettings['AgentsCount']
+            self.settings = taskSettings
 
       def run(self):
-            for i in range(1,self.agCount+1):
-                  pass
+            for i in range(1, self.agCount+1):
+                  actCount = random.randint(self.settings['ActCountMin'], self.settings['ActCountMax'])
+
+                  print('agent no ' , i , ' act count: ' , actCount)
+            
+            self.setProgress(100)
+            return True
 
       def finished(self, result):
             self.printLog.emit(f'[INFO]:[{self.description()}] => Task finished.')
@@ -332,7 +338,6 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
       def cancel(self):
             self.printLog.emit(f'[INFO]:[{self.description()}] => Task cancel.')
             super().cancel()
-
 
 class LinkXmlTask(XmlBase, FeatureTaskBase): # deprecated
       def __init__(self, document, lineVectorLayer, pointVectorLayer, taskSettings):

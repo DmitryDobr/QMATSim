@@ -137,7 +137,6 @@ class QMatSimDialog(QtWidgets.QDialog):
         self.taskSettings = dict() # settings for XML tasks
         self.reloadSettings() # default reload
     
-
     def initActTableColumns(self):
         self.tableWidget_actTime.horizontalHeader().setResizeMode(0,QtWidgets.QHeaderView.Fixed)
         self.tableWidget_actTime.horizontalHeader().setResizeMode(1,QtWidgets.QHeaderView.Stretch)

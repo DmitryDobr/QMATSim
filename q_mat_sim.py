@@ -354,6 +354,12 @@ class QMatSim:
 
             if (self.task_manager.task(taskId).description() == LINE_LINK_NMP_TASK_DESCRIPTION):
                 print(self.task_manager.task(taskId).matrix)
+
+                newTask = AgentXmlTask(self.doc, self.dlg.mMapLayerComboBox_nodes.currentLayer(), 
+                                       self.dlg.mMapLayerComboBox_acts.currentLayer(),
+                                       self.task_manager.task(taskId).matrix,
+                                       self.dlg.getAgentSettings()) 
+                self.task_manager.addTask(newTask)
                 
         if (status == 4):
             self.iface.messageBar().pushMessage("Critical", "Error occured during task", level=Qgis.Critical, duration=6)
