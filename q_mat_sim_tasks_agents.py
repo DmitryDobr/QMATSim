@@ -98,13 +98,14 @@ class ActData(): # DataClass for act params
       def setPoint(self, geom: QgsGeometry):
             self.point = geom.asPoint()
       
-      def getActParams(self):
+      def getActParams(self, isLast = False):
             params = dict()
             params['type'] = self.type
-            params['x'] = self.point.x()
-            params['y'] = self.point.y()
+            params['x'] = round(self.point.x(),3)
+            params['y'] = round(self.point.y(),3)
             params['link'] = self.link
-            params[self.timeOperation] = self.time.toString()
+            if (not isLast):
+                  params[self.timeOperation] = self.time.toString()
 
             return params
       def __str__(self):
@@ -159,7 +160,9 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
                   acts = self.createActs(actCount) # list of acts DataClass
 
                   for a in acts:
-                        a.renderAsXml()
+                        self.createDomAtStack('act')
+                        self.addAttributesAtLastDomAtStack(a.getActParams(isLast= a == acts[-1]))
+                        self.appendLastDomAtStack()
 
                   self.setProgress(int(i/(self.agCount+1)))
             
