@@ -22,7 +22,7 @@
  ***************************************************************************/
 """
 
-from qgis.PyQt.QtCore import pyqtSignal
+from qgis.PyQt.QtCore import pyqtSignal, QTime
 
 from qgis.core import (
       QgsVectorLayer, 
@@ -36,13 +36,16 @@ from qgis.core import (
       QgsWkbTypes,
       QgsFeatureRequest,
       QgsRectangle, 
-      QgsVector
+      QgsVector,
+      QgsExpression
 )
 
 from qgis.PyQt import QtXml
 
 import numpy as np
 import heapq, random
+
+from datetime import datetime, time, timedelta
 
 POINT_NODE_XML_TASK_DESCRIPTION = "POINT_NODE_XML_TASK"
 LINE_LINK_XML_TASK_DESCRIPTION = "LINE_LINK_XML_TASK"
@@ -234,8 +237,6 @@ class NetworkArrayTask(LineTaskBase): # task to create numpy array of network fr
             if (not self.lineUseAutoId):
                   lineId = feature.attribute(self.IdAttrName)
 
-            print(idFrom, idTo, lineId)
-
             self.matrix[idFrom - 1,idTo  - 1] = lineId
 
             if (TwoSides):
@@ -286,58 +287,98 @@ class LinkXmlTaskV2(XmlBase, LineTaskBase): # task to create XML links from line
 
                   self.MaxLineId += 1
 
-class XmlBaseV2(): # Base to quickly create XML elements
-      def __init__(self, doc, startDomName):
-            self.__doc = doc # QDomDocument()
-            self.DomElementStack = list()
+# class XmlBaseV2(): # Base to quickly create XML elements
+#       def __init__(self, doc, startDomName):
+#             self.__doc = doc # QDomDocument()
+#             self.DomElementStack = list()
 
-            self.rootDom = self.__doc.elementsByTagName(startDomName).item(0) # QDomElement
+#             self.rootDom = self.__doc.elementsByTagName(startDomName).item(0) # QDomElement
       
-      def applyToRootDom(self): # set element at the end of stack as child for root element
-            self.rootDom.appendChild(self.DomElementStack[-1])
+#       def applyToRootDom(self): # set element at the end of stack as child for root element
+#             self.rootDom.appendChild(self.DomElementStack[-1])
       
-      def createDomAtStack(self, domName: str): # create new element at the end of stack
-            elem = self.__doc.createElement(domName)
-            self.DomElementStack.append(elem)
+#       def createDomAtStack(self, domName: str): # create new element at the end of stack
+#             elem = self.__doc.createElement(domName)
+#             self.DomElementStack.append(elem)
       
-      def addAttributesAtLastDomAtStack(self, params: dict): # add attributes to element at the end of stack
-            for key, value in params.items():
-                  self.DomElementStack[-1].setAttribute(key, str(value))
+#       def addAttributesAtLastDomAtStack(self, params: dict): # add attributes to element at the end of stack
+#             for key, value in params.items():
+#                   self.DomElementStack[-1].setAttribute(key, str(value))
 
-      def addTextNodeToLastDomAtStack(self, text: str): # insert text to element at the end of stack
-            tx = self.__doc.createTextNode(text)
-            self.DomElementStack[-1].appendChild(tx)
+#       def addTextNodeToLastDomAtStack(self, text: str): # insert text to element at the end of stack
+#             tx = self.__doc.createTextNode(text)
+#             self.DomElementStack[-1].appendChild(tx)
 
-      def appendLastDomAtStack(self): # set element at the end of stack as child for element before and delete it from stack
-            self.DomElementStack[-2].appendChild(self.DomElementStack[-1])
-            self.DomElementStack.pop()
+#       def appendLastDomAtStack(self): # set element at the end of stack as child for element before and delete it from stack
+#             self.DomElementStack[-2].appendChild(self.DomElementStack[-1])
+#             self.DomElementStack.pop()
 
-class AgentXmlTask(XmlBaseV2, QgsTask):
-      printLog = pyqtSignal(str)
+# class AgentXmlTask(XmlBaseV2, QgsTask):
+#       printLog = pyqtSignal(str)
       
-      def __init__(self, document, nodesLayer, actsLayer, matrix, taskSettings):
-            XmlBaseV2.__init__(self, doc=document, startDomName="plans") # append final <person> element to <plans> root element
-            QgsTask.__init__(self, AGENT_XML_TASK_DESCRIPTION, QgsTask.CanCancel)
+#       def __init__(self, document, nodesLayer, actsLayer, matrix, taskSettings):
+#             XmlBaseV2.__init__(self, doc=document, startDomName="plans") # append final <person> element to <plans> root element
+#             QgsTask.__init__(self, AGENT_XML_TASK_DESCRIPTION, QgsTask.CanCancel)
 
-            self.agCount = taskSettings['AgentsCount']
-            self.settings = taskSettings
+#             self.agCount = taskSettings['AgentsCount']
+#             self.settings = taskSettings
 
-      def run(self):
-            for i in range(1, self.agCount+1):
-                  actCount = random.randint(self.settings['ActCountMin'], self.settings['ActCountMax'])
+#             self.actsLayer = actsLayer
+#             self.nodesLayer = nodesLayer
 
-                  print('agent no ' , i , ' act count: ' , actCount)
+#       def run(self):
+#             for i in range(1, self.agCount+1):
+#                   if self.isCanceled():
+#                         return False
+                  
+#                   actCount = random.randint(self.settings['ActCountMin'], self.settings['ActCountMax'])
+#                   print('agent no ' , i , ' act count: ' , actCount)
+
+#                   self.createActs(actCount)
+
+#                   self.setProgress(int(i/(self.agCount+1)))
             
-            self.setProgress(100)
-            return True
+#             self.setProgress(100)
+#             return True
 
-      def finished(self, result):
-            self.printLog.emit(f'[INFO]:[{self.description()}] => Task finished.')
-            self.result = result
+#       def createActs(self, actCount):
+#             acts = list()
+
+#             for i in range(1, actCount):
+#                   print('act no:', i)
+#                   print('act feature: ')
+#                   print(self.randActPointFeature().id())
+
+#       def randActPointFeature(self, filterType=None): # get random act point from acts layer if filterType is set, get with current act type
+#             FeatureId = -1
+
+#             if (filterType):
+#                   string = f'"acttype"=\'{filterType}\'' # request string
+#                   #print(string)
+#                   request = QgsFeatureRequest(QgsExpression(string))
+#                   ids = list()
+#                   for f in self.actsLayer.getFeatures(request): # request features and get theirs $id
+#                         ids.append(f.id())
+#                   #print(ids)
+#                   FeatureId = random.choice(ids) # random from ids
+#             else:
+#                   FeatureId = random.randint(1,self.actsLayer.featureCount())
+
+#             return self.actsLayer.getFeature(FeatureId)
+
+
+#       def randTimeFromSecLimit(self, minT, maxT):
+#             val = random.randint(minT, maxT)
+#             t = QTime(s=val)
+#             return t
+
+#       def finished(self, result):
+#             self.printLog.emit(f'[INFO]:[{self.description()}] => Task finished.')
+#             self.result = result
     
-      def cancel(self):
-            self.printLog.emit(f'[INFO]:[{self.description()}] => Task cancel.')
-            super().cancel()
+#       def cancel(self):
+#             self.printLog.emit(f'[INFO]:[{self.description()}] => Task cancel.')
+#             super().cancel()
 
 class LinkXmlTask(XmlBase, FeatureTaskBase): # deprecated
       def __init__(self, document, lineVectorLayer, pointVectorLayer, taskSettings):

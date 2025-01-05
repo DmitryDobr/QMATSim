@@ -30,9 +30,11 @@ from qgis.PyQt.QtWidgets import QAction
 from .resources import *
 # Import the code for the dialog
 from .q_mat_sim_dialog import QMatSimDialog
+
 import os.path
 
 from .q_mat_sim_tasks import *
+from .q_mat_sim_tasks_agents import *
 
 from qgis.core import (
     Qgis,
@@ -360,6 +362,7 @@ class QMatSim:
                                        self.task_manager.task(taskId).matrix,
                                        self.dlg.getAgentSettings()) 
                 self.task_manager.addTask(newTask)
+                print(self.task_manager.count())
                 
         if (status == 4):
             self.iface.messageBar().pushMessage("Critical", "Error occured during task", level=Qgis.Critical, duration=6)
