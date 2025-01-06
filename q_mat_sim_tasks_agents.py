@@ -86,12 +86,13 @@ class XmlBaseV2(): # Base to quickly create XML elements
             print(self.__doc.toString())
 
 class ActData(): # DataClass for act params
-      def __init__(self, acttype, actTime, actTimeOp):
+      def __init__(self, acttype, actTime, actTimeOp, actPointID):
             self.type = acttype
             self.point = None # QgsGeometry
             self.link = -1
             self.time = actTime # QTime
             self.timeOperation = actTimeOp # str 'end_time'
+            self.actPointID = actPointID
       
       def setLink(self, link):
             self.link = link
@@ -136,7 +137,63 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
             self.actsLayer = actsLayer
             self.nodesLayer = nodesLayer
 
+            self.networkMatrix = matrix
+
             self.filterActPointsID = list([-1]) # id of point at acts layer for previous act when creating acts
+
+            self.ActToNodeNearPointIDs = dict() # paired $id/.id() of points at Acts and Nodes Layers for nearest points
+            # fill the dict
+            for actFeature in self.actsLayer.getFeatures():
+                  nearNodeID = -1
+                  minDist = -1
+
+                  for nodeFeature in self.nodesLayer.getFeatures():
+                        newDist = actFeature.geometry().distance(nodeFeature.geometry())
+
+                        if minDist < 0 or newDist < minDist:
+                              minDist = newDist
+                              nearNodeID = nodeFeature.id()
+
+                  self.ActToNodeNearPointIDs[actFeature.id()] = nearNodeID - 1
+
+            print(self.ActToNodeNearPointIDs)
+
+      def a_star_shortest_path(self, start_node, end_node): # simple a-star with no range based on length of path
+            num_nodes = self.networkMatrix.shape[0]
+
+            def heuristic(node):
+                  return 0
+
+            # initialize
+            open_set = [(0, start_node)]  # (f_score, node)
+            came_from = {}
+            g_score = {node: float('inf') for node in range(num_nodes)}
+            g_score[start_node] = 0
+            f_score = {node: float('inf') for node in range(num_nodes)}
+            f_score[start_node] = heuristic(start_node)
+
+            while open_set:
+                  current_f, current_node = heapq.heappop(open_set)
+
+                  if current_node == end_node:
+                        path = []
+                        while current_node in came_from:
+                              path.append(current_node)
+                              current_node = came_from[current_node]
+                        path.append(start_node)
+                        return path[::-1]  # reversed route
+
+                  neighbors = np.where(self.networkMatrix[current_node] > 0)[0]  # Effective neighbours finding
+
+                  for neighbor in neighbors:
+                        tentative_g_score = g_score[current_node] + 1
+                        if tentative_g_score < g_score[neighbor]:
+                              came_from[neighbor] = current_node
+                              g_score[neighbor] = tentative_g_score
+                              f_score[neighbor] = tentative_g_score + heuristic(neighbor)
+                              heapq.heappush(open_set, (f_score[neighbor], neighbor))
+
+            return None  # No route
 
       def run(self):
             for i in range(1, self.agCount+1):
@@ -161,21 +218,33 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
 
                   acts = self.createActs(actCount) # list of acts DataClass
 
-                  for i in range(0, len(acts)):
-                        flag = (i == len(acts) - 1)
+                  for j in range(0, len(acts)):
+                        flag = (j == len(acts) - 1)
 
                         # add act DOM
                         self.createDomAtStack('act')
-                        self.addAttributesAtLastDomAtStack(acts[i].getActParams(isLast = (flag) ))
+                        self.addAttributesAtLastDomAtStack(acts[j].getActParams(isLast = flag ))
                         self.appendLastDomAtStack()
 
                         # add leg DOM
                         if (not flag):
+
+                              path = self.a_star_shortest_path(self.ActToNodeNearPointIDs[acts[j].actPointID], 
+                                                                  self.ActToNodeNearPointIDs[acts[j+1].actPointID])
+                              
                               self.createDomAtStack('leg')
                               self.addAttributesAtLastDomAtStack(dict({'mode': 'car'}))
                               self.createDomAtStack('route')
 
+                              if (len(path) > 1):
+                                    string = " ".join(str(el) for el in path)
+                                    self.addTextNodeToLastDomAtStack(string)
+                              else:
+                                    self.printLog.emit(f'[WARN]:[{self.description()}] => Agent no ({i}). No found route between acts {j} and {j+1}')
+
                               self.appendLastDomAtStack(2)
+                        else:
+                              pass
 
                   self.setProgress(int(i/(self.agCount+1)))
             
@@ -212,7 +281,6 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
             if (filterActType):
                   string = f'"acttype"=\'{filterActType}\'' # request string
                   request = QgsFeatureRequest(QgsExpression(string))
-
                   features = self.actsLayer.getFeatures(request)
             else:
                   features = self.actsLayer.getFeatures()
@@ -235,7 +303,7 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
                   actTimeOperation = 'dur'
                   actTimeVal = self.randTimeFromSecLimit(self.settings['ActMinMaxTime'].get(actFeature.attribute('acttype')))
 
-            act = ActData(actFeature.attribute('acttype'), actTimeVal, actTimeOperation)
+            act = ActData(actFeature.attribute('acttype'), actTimeVal, actTimeOperation, FeatureId)
             act.setPoint(actFeature.geometry())
 
             return act
@@ -255,7 +323,7 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
 
             return self.actsLayer.getFeature(FeatureId)
 
-      def randTimeFromSecLimit(self, MinMaxList):
+      def randTimeFromSecLimit(self, MinMaxList): # random time value in seconds from list with [min,max]
             val = random.randint(MinMaxList[0], MinMaxList[1])
             t = QTime(0,0)
             t = t.addSecs(val)
