@@ -77,9 +77,10 @@ class XmlBaseV2(): # Base to quickly create XML elements
             tx = self.__doc.createTextNode(text)
             self.DomElementStack[-1].appendChild(tx)
 
-      def appendLastDomAtStack(self): # set element at the end of stack as child for element before and delete it from stack
-            self.DomElementStack[-2].appendChild(self.DomElementStack[-1])
-            self.DomElementStack.pop()
+      def appendLastDomAtStack(self, count=1): # set element at the end of stack as child for element before and delete it from stack
+            for i in range(0, count):
+                  self.DomElementStack[-2].appendChild(self.DomElementStack[-1])
+                  self.DomElementStack.pop()
 
       def printDoc(self):
             print(self.__doc.toString())
@@ -108,6 +109,7 @@ class ActData(): # DataClass for act params
                   params[self.timeOperation] = self.time.toString()
 
             return params
+      
       def __str__(self):
             string =  ' - act info: \n'
             string += '   - type: ' + str(self.type) + '\n'
@@ -159,10 +161,21 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
 
                   acts = self.createActs(actCount) # list of acts DataClass
 
-                  for a in acts:
+                  for i in range(0, len(acts)):
+                        flag = (i == len(acts) - 1)
+
+                        # add act DOM
                         self.createDomAtStack('act')
-                        self.addAttributesAtLastDomAtStack(a.getActParams(isLast= a == acts[-1]))
+                        self.addAttributesAtLastDomAtStack(acts[i].getActParams(isLast = (flag) ))
                         self.appendLastDomAtStack()
+
+                        # add leg DOM
+                        if (not flag):
+                              self.createDomAtStack('leg')
+                              self.addAttributesAtLastDomAtStack(dict({'mode': 'car'}))
+                              self.createDomAtStack('route')
+
+                              self.appendLastDomAtStack(2)
 
                   self.setProgress(int(i/(self.agCount+1)))
             
