@@ -59,6 +59,11 @@ class Highlighter(QSyntaxHighlighter): # highlighter for xml document
         self.HighlightRules.append(rule)
 
         classFormat = QTextCharFormat()
+        classFormat.setForeground(QColor("#505050"))
+        rule = HighlightingRule(expression=QRegularExpression(r"\d"), format=classFormat)
+        self.HighlightRules.append(rule)
+
+        classFormat = QTextCharFormat()
         classFormat.setForeground(QColor("#ff3038"))
         rule = HighlightingRule(expression=QRegularExpression(r"\S+(?=\=)"), format=classFormat)
         self.HighlightRules.append(rule)

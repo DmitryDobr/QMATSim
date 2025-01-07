@@ -47,9 +47,6 @@ import heapq, random
 
 from datetime import datetime, time, timedelta
 
-POINT_NODE_XML_TASK_DESCRIPTION = "POINT_NODE_XML_TASK"
-LINE_LINK_XML_TASK_DESCRIPTION = "LINE_LINK_XML_TASK"
-LINE_LINK_NMP_TASK_DESCRIPTION = "LINE_LINK_ARRAY_TASK"
 AGENT_XML_TASK_DESCRIPTION = "AGENT_XML_TASK"
 
 class XmlBaseV2(): # Base to quickly create XML elements

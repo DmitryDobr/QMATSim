@@ -36,7 +36,6 @@ import os.path
 from .q_mat_sim_tasks import *
 from .q_mat_sim_tasks_agents import *
 
-
 from qgis.core import (
     Qgis,
     QgsVector,
@@ -90,6 +89,9 @@ class QMatSim:
         self.toolbar = self.iface.addToolBar("QMATSim")
 
         self.dlg = None
+
+        self.agdlg = None
+        self.ntdlg = None
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -198,7 +200,6 @@ class QMatSim:
                 self.tr(u'&QMatSim'),action)
             self.iface.removeToolBarIcon(action)
         
-
     def runNetworkEditor(self): # run Network creator ui
 
         if self.ntfirst_start == True:
@@ -361,9 +362,22 @@ class QMatSim:
                 newTask = AgentXmlTask(self.doc, self.dlg.mMapLayerComboBox_nodes.currentLayer(), 
                                        self.dlg.mMapLayerComboBox_acts.currentLayer(),
                                        self.task_manager.task(taskId).matrix,
-                                       self.dlg.getAgentSettings()) 
+                                       self.dlg.getAgentSettings(),
+                                       self.dlg.getSettings()) 
+                
+                newTask.printLog.connect(self.printLog)
                 self.task_manager.addTask(newTask)
                 print(self.task_manager.count())
+            
+            if (self.task_manager.task(taskId).description() == AGENT_XML_TASK_DESCRIPTION):
+
+                self.iface.messageBar().pushMessage("Success", "XML Population created", level=Qgis.Success, duration=6)
+
+                self.dlg.textEdit_xmlOutput.append('<?xml version="1.0" encoding="utf-8"?>')
+                self.dlg.textEdit_xmlOutput.append(self.doc.toString())
+
+                self.dlg.pushButton_saveFile.setEnabled(True)
+
                 
         if (status == 4):
             self.iface.messageBar().pushMessage("Critical", "Error occured during task", level=Qgis.Critical, duration=6)
@@ -376,14 +390,16 @@ class QMatSim:
 
     def saveXmlFile(self): # export current document to xml file
         file = QFile(self.dlg.mQgsFileWidget.filePath())
-        file.open(QIODevice.WriteOnly | QIODevice.Text)
-        stream = QTextStream(file)
-        stream << '<?xml version="1.0" encoding="utf-8"?>\n'
-        if (self.dlg == self.ntdlg):
-            stream << '<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v1.dtd">\n'
-        else:
-            stream << '<!DOCTYPE plans SYSTEM "http://www.matsim.org/files/dtd/plans_v4.dtd">\n'
-        stream << self.doc.toString()
-        file.close()
 
-        self.iface.messageBar().pushMessage("Saved", "XML File saved", level=Qgis.Success, duration=6)
+        if (file):
+            file.open(QIODevice.WriteOnly | QIODevice.Text)
+            stream = QTextStream(file)
+            stream << '<?xml version="1.0" encoding="utf-8"?>\n'
+            if (self.dlg == self.ntdlg):
+                stream << '<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v1.dtd">\n'
+            else:
+                stream << '<!DOCTYPE plans SYSTEM "http://www.matsim.org/files/dtd/plans_v4.dtd">\n'
+            stream << self.doc.toString()
+            file.close()
+
+            self.iface.messageBar().pushMessage("Saved", "XML File saved", level=Qgis.Success, duration=6)
