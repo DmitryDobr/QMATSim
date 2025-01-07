@@ -127,12 +127,13 @@ class ActData(): # DataClass for act params
 class AgentXmlTask(XmlBaseV2, QgsTask):
       printLog = pyqtSignal(str)
       
-      def __init__(self, document, nodesLayer, actsLayer, matrix, AgentTaskSettings):
+      def __init__(self, document, nodesLayer, actsLayer, matrix, AgentTaskSettings, NetWorkSettings):
             XmlBaseV2.__init__(self, doc=document, startDomName="plans") # append final <person> element to <plans> root element
             QgsTask.__init__(self, AGENT_XML_TASK_DESCRIPTION, QgsTask.CanCancel)
 
             self.agCount = AgentTaskSettings['AgentsCount']
             self.AgentSettings = AgentTaskSettings
+            self.networkSettings = NetWorkSettings
 
             self.actsLayer = actsLayer
             self.nodesLayer = nodesLayer
@@ -230,24 +231,10 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
                         # add leg DOM
                         if (not flag):
 
-                              path = self.a_star_shortest_path(self.ActToNodeNearPointIDs[acts[j].actPointID], self.ActToNodeNearPointIDs[acts[j+1].actPointID])
-                              if (not path):
+                              routeResult = self.defineRouteBetweenActs(acts[j], acts[j+1])
+                              if (not routeResult):
                                     self.printLog.emit(f'[ERROR]:[{self.description()}] => Agent no ({i}). Route between acts {j} and {j+1} not found.')
                                     return False
-
-                              if (len(path) > 1): # if route have 2+ points
-                                    if (acts[j].link == -1):
-                                          acts[j].setLink(self.networkMatrix[path[0], path[1]])
-                                    acts[j+1].setLink(self.networkMatrix[path[-2], path[-1]]) # next act have link that connects 2 last points of route
-                              else: # if route have 1 point (possible when 2 acts have 1 nearest node point)
-                                    if (acts[j].link == -1): # if it is first act => find first link that connects point nearest to act and some other point 
-                                          linkNum = -1
-                                          for i in range(0, self.networkMatrix.shape[0]):
-                                                if (self.networkMatrix[path[0], i] >= 0):
-                                                      linkNum = self.networkMatrix[path[0], i]
-                                                      break
-                                          acts[j].setLink(linkNum) # set link for current act
-                                    acts[j+1].setLink(acts[j].link) # next act after leg have similar link number that current act
 
                               self.addAttributesAtLastDomAtStack(acts[j].getActParams(isLast = flag )) # add act attributes to current act from act DataClass
                               self.appendLastDomAtStack() # add act to plan DOM
@@ -256,8 +243,8 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
                               self.addAttributesAtLastDomAtStack(dict({'mode': 'car'})) # add mode attribute (update in future to other modes)
                               self.createDomAtStack('route') # add route DOM
 
-                              if (len(path) > 1):
-                                    string = " ".join(str(el+1) for el in path)
+                              if (len(routeResult) > 1):
+                                    string = " ".join(str(el) for el in routeResult)
                                     self.addTextNodeToLastDomAtStack(string) # add route nodes ids as text
                               else:
                                     self.addTextNodeToLastDomAtStack(' ') # if path consist one point => no need to write route
@@ -274,6 +261,34 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
             
             self.setProgress(100)
             return True
+
+      def defineRouteBetweenActs(self, act, nextAct): # define route and fill link numbers for given acts. return false if route not generated
+            path = self.a_star_shortest_path(self.ActToNodeNearPointIDs[act.actPointID], self.ActToNodeNearPointIDs[nextAct.actPointID])
+            if (not path):
+                  return False
+
+            if (len(path) > 1): # if route have 2+ points
+                  if (act.link == -1):
+                        act.setLink(self.networkMatrix[path[0], path[1]])
+                  nextAct.setLink(self.networkMatrix[path[-2], path[-1]]) # next act have link that connects 2 last points of route
+            else: # if route have 1 point (possible when 2 acts have 1 nearest node point)
+                  if (act.link == -1): # if it is first act => find first link that connects point nearest to act and some other point 
+                        linkNum = -1
+                        for i in range(0, self.networkMatrix.shape[0]):
+                              if (self.networkMatrix[path[0], i] >= 0):
+                                    linkNum = self.networkMatrix[path[0], i]
+                                    break
+                        act.setLink(linkNum) # set link for current act
+                  nextAct.setLink(act.link) # next act after leg have similar link number that current act
+            
+            if (not self.networkSettings['IdValOnLayer']):
+                  for i in range(0, len(path)):
+                        path[i] = int(self.nodesLayer.getFeature(path[i]+1).attribute(self.networkSettings['PointAttr']))
+            else:
+                  for i in range(0, len(path)):
+                        path[i] += 1 # cause in Qgis .id() starts with 1 but in numpy and programming first element is 0
+
+            return path
 
       def createActs(self, actCount): # cycle to create list of acts
             acts = list()
