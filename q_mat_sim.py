@@ -357,7 +357,6 @@ class QMatSim:
                 self.dlg.pushButton_saveFile.setEnabled(True)
 
             if (self.task_manager.task(taskId).description() == LINE_LINK_NMP_TASK_DESCRIPTION):
-                print(self.task_manager.task(taskId).matrix)
 
                 newTask = AgentXmlTask(self.doc, self.dlg.mMapLayerComboBox_nodes.currentLayer(), 
                                        self.dlg.mMapLayerComboBox_acts.currentLayer(),
@@ -367,7 +366,6 @@ class QMatSim:
                 
                 newTask.printLog.connect(self.printLog)
                 self.task_manager.addTask(newTask)
-                print(self.task_manager.count())
             
             if (self.task_manager.task(taskId).description() == AGENT_XML_TASK_DESCRIPTION):
 

@@ -57,7 +57,6 @@ class XmlBaseV2(): # Base to quickly create XML elements
             self.rootDom = self.__doc.elementsByTagName(startDomName).item(0) # QDomElement
       
       def applyToRootDom(self): # set element at the end of stack as child for root element
-            print(len(self.DomElementStack))
             for el in self.DomElementStack:
                   self.rootDom.appendChild(el)
             # self.rootDom.appendChild(self.DomElementStack[0])
@@ -78,9 +77,6 @@ class XmlBaseV2(): # Base to quickly create XML elements
             for i in range(0, count):
                   self.DomElementStack[-2].appendChild(self.DomElementStack[-1])
                   self.DomElementStack.pop()
-
-      def printDoc(self):
-            print(self.__doc.toString())
 
 class ActData(): # DataClass for act params
       def __init__(self, acttype, actTime, actTimeOp, actPointID):
@@ -117,9 +113,6 @@ class ActData(): # DataClass for act params
 
             return string
 
-      def renderAsXml(self):
-            print(f'<act type="{self.type}" x="{str(round(self.point.x(),3))}" y="{str(round(self.point.y(),3))}" link="{self.link}" {self.timeOperation}="{self.time.toString()}"/>')
-
 
 class AgentXmlTask(XmlBaseV2, QgsTask):
       printLog = pyqtSignal(str)
@@ -153,8 +146,6 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
                               nearNodeID = nodeFeature.id()
 
                   self.ActToNodeNearPointIDs[actFeature.id()] = nearNodeID - 1
-
-            print(self.ActToNodeNearPointIDs)
 
       def a_star_shortest_path(self, start_node, end_node): # simple a-star with no range based on length of path
             num_nodes = self.networkMatrix.shape[0]
@@ -208,7 +199,7 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
                   
                   # random act count
                   actCount = random.randint(self.AgentSettings['ActCountMin'], self.AgentSettings['ActCountMax']) # random count of acts
-                  print('agent no ' , i , ' act count: ' , actCount)
+                  self.printLog.emit(f'[ERROR]:[{self.description()}] => Agent no ({i}). Acts count: {actCount}.')
 
                   self.createDomAtStack('plan')
 
@@ -255,6 +246,7 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
                   self.appendLastDomAtStack() # append plan at person
 
                   self.setProgress(int(i/(self.agCount+1)))
+                  self.printLog.emit(f'[ERROR]:[{self.description()}] => Agent no ({i}). Done generation.')
             
             self.setProgress(100)
             return True
@@ -366,9 +358,7 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
             return t
 
       def finished(self, result):
-            
             self.applyToRootDom()
-            self.printDoc()
 
             self.printLog.emit(f'[INFO]:[{self.description()}] => Task finished.')
             self.result = result

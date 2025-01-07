@@ -230,8 +230,6 @@ class QMatSimDialog(QtWidgets.QDialog):
         self.taskSettings['IdValOnLayer'] = self.radioButton_idVal1.isChecked()
         self.taskSettings['PointAttr'] = self.mFieldComboBox_PointAttrId.currentField()
         self.taskSettings['LineAttr'] = self.mFieldComboBox_LineAttrId.currentField()
-
-        print(self.taskSettings)
     
     def reloadAgentSettings(self): # reload agent generator settings
         flag = True
@@ -240,7 +238,6 @@ class QMatSimDialog(QtWidgets.QDialog):
         for i in range(0, self.tableWidget_actTime.rowCount()):
             timeList = list()
             actName = self.tableWidget_actTime.item(i,0).text()
-            print(actName)
             
             if (actName == ""):
                 flag = False
@@ -257,16 +254,9 @@ class QMatSimDialog(QtWidgets.QDialog):
             self.agentSettings['ActCountMax']   = self.spinBox_actCountMax.value()    # maximum count of acts per plan
             self.agentSettings['LastFirstAct']  = self.checkBox_lastAct.isChecked()   # first act equals last
             self.agentSettings['FirstActHome']  = self.checkBox_firstActH.isChecked() # first act is 'h'
-            #self.agentSettings['FirstActMin']   = QTime(0,0).secsTo(self.timeEdit_firstActDurMin.time()) # min time limit for first act end_time
-            #self.agentSettings['FirstActMax']   = QTime(0,0).secsTo(self.timeEdit_firstActDurMax.time()) # max time limit for first act end_time
             self.agentSettings['FirstActMinMax'] = list([QTime(0,0).secsTo(self.timeEdit_firstActDurMin.time()),
                                                          QTime(0,0).secsTo(self.timeEdit_firstActDurMax.time())])
             self.agentSettings['ActMinMaxTime'] = actParams                           # time limits for acts type
-
-            #print(QTime(0,0).secsTo(self.timeEdit_firstActDurMin.time()))
-            #print(QTime(0,0).secsTo(self.timeEdit_firstActDurMax.time()))
-
-            #print(self.agentSettings)
         
         return flag
 
