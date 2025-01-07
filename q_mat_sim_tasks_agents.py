@@ -127,12 +127,12 @@ class ActData(): # DataClass for act params
 class AgentXmlTask(XmlBaseV2, QgsTask):
       printLog = pyqtSignal(str)
       
-      def __init__(self, document, nodesLayer, actsLayer, matrix, taskSettings):
+      def __init__(self, document, nodesLayer, actsLayer, matrix, AgentTaskSettings):
             XmlBaseV2.__init__(self, doc=document, startDomName="plans") # append final <person> element to <plans> root element
             QgsTask.__init__(self, AGENT_XML_TASK_DESCRIPTION, QgsTask.CanCancel)
 
-            self.agCount = taskSettings['AgentsCount']
-            self.settings = taskSettings
+            self.agCount = AgentTaskSettings['AgentsCount']
+            self.AgentSettings = AgentTaskSettings
 
             self.actsLayer = actsLayer
             self.nodesLayer = nodesLayer
@@ -209,42 +209,66 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
                   self.addAttributesAtLastDomAtStack(dict({'id': str(i)}))
                   
                   # random act count
-                  actCount = random.randint(self.settings['ActCountMin'], self.settings['ActCountMax']) # random count of acts
+                  actCount = random.randint(self.AgentSettings['ActCountMin'], self.AgentSettings['ActCountMax']) # random count of acts
                   print('agent no ' , i , ' act count: ' , actCount)
 
+                  self.createDomAtStack('plan')
+
                   # if last act is first do -1
-                  if (self.settings['LastFirstAct']):
+                  if (self.AgentSettings['LastFirstAct']):
                         actCount -= 1
 
                   acts = self.createActs(actCount) # list of acts DataClass
 
-                  for j in range(0, len(acts)):
+                  for j in range(0, len(acts)): # for every generated act
                         flag = (j == len(acts) - 1)
 
                         # add act DOM
                         self.createDomAtStack('act')
                         self.addAttributesAtLastDomAtStack(acts[j].getActParams(isLast = flag ))
-                        self.appendLastDomAtStack()
 
                         # add leg DOM
                         if (not flag):
 
-                              path = self.a_star_shortest_path(self.ActToNodeNearPointIDs[acts[j].actPointID], 
-                                                                  self.ActToNodeNearPointIDs[acts[j+1].actPointID])
+                              path = self.a_star_shortest_path(self.ActToNodeNearPointIDs[acts[j].actPointID], self.ActToNodeNearPointIDs[acts[j+1].actPointID])
+                              if (not path):
+                                    self.printLog.emit(f'[ERROR]:[{self.description()}] => Agent no ({i}). Route between acts {j} and {j+1} not found.')
+                                    return False
+
+                              if (len(path) > 1): # if route have 2+ points
+                                    if (acts[j].link == -1):
+                                          acts[j].setLink(self.networkMatrix[path[0], path[1]])
+                                    acts[j+1].setLink(self.networkMatrix[path[-2], path[-1]]) # next act have link that connects 2 last points of route
+                              else: # if route have 1 point (possible when 2 acts have 1 nearest node point)
+                                    if (acts[j].link == -1): # if it is first act => find first link that connects point nearest to act and some other point 
+                                          linkNum = -1
+                                          for i in range(0, self.networkMatrix.shape[0]):
+                                                if (self.networkMatrix[path[0], i] >= 0):
+                                                      linkNum = self.networkMatrix[path[0], i]
+                                                      break
+                                          acts[j].setLink(linkNum) # set link for current act
+                                    acts[j+1].setLink(acts[j].link) # next act after leg have similar link number that current act
+
+                              self.addAttributesAtLastDomAtStack(acts[j].getActParams(isLast = flag )) # add act attributes to current act from act DataClass
+                              self.appendLastDomAtStack() # add act to plan DOM
                               
-                              self.createDomAtStack('leg')
-                              self.addAttributesAtLastDomAtStack(dict({'mode': 'car'}))
-                              self.createDomAtStack('route')
+                              self.createDomAtStack('leg') # create leg DOM
+                              self.addAttributesAtLastDomAtStack(dict({'mode': 'car'})) # add mode attribute (update in future to other modes)
+                              self.createDomAtStack('route') # add route DOM
 
                               if (len(path) > 1):
-                                    string = " ".join(str(el) for el in path)
-                                    self.addTextNodeToLastDomAtStack(string)
+                                    string = " ".join(str(el+1) for el in path)
+                                    self.addTextNodeToLastDomAtStack(string) # add route nodes ids as text
                               else:
-                                    self.printLog.emit(f'[WARN]:[{self.description()}] => Agent no ({i}). No found route between acts {j} and {j+1}')
+                                    self.addTextNodeToLastDomAtStack(' ') # if path consist one point => no need to write route
+                                    self.printLog.emit(f'[WARN]:[{self.description()}] => Agent no ({i}). Route between acts {j} and {j+1} consists less then 3 points')
 
-                              self.appendLastDomAtStack(2)
+                              self.appendLastDomAtStack(2) # route to leg; leg to plan <plan> -> <leg> -> <route>
                         else:
-                              pass
+                              self.addAttributesAtLastDomAtStack(acts[j].getActParams(isLast = flag ))
+                              self.appendLastDomAtStack() # append last act at plan to plan DOM
+                        
+                  self.appendLastDomAtStack() # append plan at person
 
                   self.setProgress(int(i/(self.agCount+1)))
             
@@ -255,7 +279,7 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
             acts = list()
 
             firstAct = None
-            if (self.settings['FirstActHome']): # if first act if h - use filter
+            if (self.AgentSettings['FirstActHome']): # if first act if h - use filter
                   firstAct = self.generateAct(filterActType='h', isFirst=True)
             else:
                   firstAct = self.generateAct(isFirst=True)
@@ -268,7 +292,7 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
                         self.filterActPointsID.append(firstActId)
                   acts.append(self.generateAct())
             
-            if (self.settings['LastFirstAct']): # if first act equals last - add firstAct
+            if (self.AgentSettings['LastFirstAct']): # if first act equals last - add firstAct
                   acts.append(firstAct)
 
             return acts
@@ -298,10 +322,10 @@ class AgentXmlTask(XmlBaseV2, QgsTask):
             actTimeOperation = None
             if (isFirst):
                   actTimeOperation = 'end_time'
-                  actTimeVal = self.randTimeFromSecLimit(self.settings['FirstActMinMax'])
+                  actTimeVal = self.randTimeFromSecLimit(self.AgentSettings['FirstActMinMax'])
             else:
                   actTimeOperation = 'dur'
-                  actTimeVal = self.randTimeFromSecLimit(self.settings['ActMinMaxTime'].get(actFeature.attribute('acttype')))
+                  actTimeVal = self.randTimeFromSecLimit(self.AgentSettings['ActMinMaxTime'].get(actFeature.attribute('acttype')))
 
             act = ActData(actFeature.attribute('acttype'), actTimeVal, actTimeOperation, FeatureId)
             act.setPoint(actFeature.geometry())
