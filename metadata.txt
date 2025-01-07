@@ -3,17 +3,17 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=QMatSim
+name=QMATSim
 qgisMinimumVersion=3.0
 description=QGIS to MatSim
-version=0.1
+version=0.2
 author=Dmitry D.
 email=dmitrdobr@mail.ru
 
-about=Export vector layers from QGIS to MatSim xml network
+about=Export vector layers from QGIS to MatSim xml
 
-tracker=https://github.com/DmitryDobr/QMatSim
-repository=https://github.com/DmitryDobr/QMatSim
+tracker=https://github.com/DmitryDobr/QMATSim
+repository=https://github.com/DmitryDobr/QMATSim
 # End of mandatory metadata
 
 # Recommended items:
@@ -25,7 +25,7 @@ hasProcessingProvider=no
 # Tags are comma separated with spaces allowed
 tags=geometry, layers, network, line, point, attribute table, attribute edit
 
-homepage=https://github.com/DmitryDobr/QMatSim
+homepage=https://github.com/DmitryDobr/QMATSim
 category=Vector
 icon=icon.png
 # experimental flag

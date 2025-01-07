@@ -30,9 +30,11 @@ from qgis.PyQt.QtWidgets import QAction
 from .resources import *
 # Import the code for the dialog
 from .q_mat_sim_dialog import QMatSimDialog
+
 import os.path
 
-from .q_mat_sim_tasks import NodeXmlTask, LinkXmlTask, LINE_LINK_XML_TASK_DESCRIPTION, POINT_NODE_XML_TASK_DESCRIPTION
+from .q_mat_sim_tasks import *
+from .q_mat_sim_tasks_agents import *
 
 from qgis.core import (
     Qgis,
@@ -53,27 +55,16 @@ from qgis.core import (
 from qgis.PyQt import QtXml
 from qgis.PyQt.QtCore import QTextStream, QFile, QIODevice
 
+#import numpy as np
+
 class QMatSim:
     """QGIS Plugin Implementation."""
 
     def __init__(self, iface):
-        """Constructor.
-
-        :param iface: An interface instance that will be passed to this class
-            which provides the hook by which you can manipulate the QGIS
-            application at run time.
-        :type iface: QgsInterface
-        """
-        # Save reference to the QGIS interface
-        self.iface = iface
-        # initialize plugin directory
-        self.plugin_dir = os.path.dirname(__file__)
-        # initialize locale
-        locale = QSettings().value('locale/userLocale')[0:2]
-        locale_path = os.path.join(
-            self.plugin_dir,
-            'i18n',
-            'QMatSim_{}.qm'.format(locale))
+        self.iface = iface # Save reference to the QGIS interface
+        self.plugin_dir = os.path.dirname(__file__) # initialize plugin directory
+        locale = QSettings().value('locale/userLocale')[0:2] # initialize locale
+        locale_path = os.path.join(self.plugin_dir,'i18n','QMatSim_{}.qm'.format(locale))
 
         if os.path.exists(locale_path):
             self.translator = QTranslator()
@@ -88,9 +79,19 @@ class QMatSim:
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
 
+        self.ntfirst_start = None
+        self.agfirst_start = None
+
         self.task_manager = QgsTaskManager()  
         self.task_manager.statusChanged.connect(self.statusChanged)
         self.task_manager.progressChanged.connect(self.taskProgresChanged)
+
+        self.toolbar = self.iface.addToolBar("QMATSim")
+
+        self.dlg = None
+
+        self.agdlg = None
+        self.ntdlg = None
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -107,17 +108,8 @@ class QMatSim:
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('QMatSim', message)
 
-    def add_action(
-        self,
-        icon_path,
-        text,
-        callback,
-        enabled_flag=True,
-        add_to_menu=True,
-        add_to_toolbar=True,
-        status_tip=None,
-        whats_this=None,
-        parent=None):
+    def add_action(self, icon_path, text, callback, enabled_flag=True,
+        add_to_menu=True, add_to_toolbar=True, status_tip=None, whats_this=None, parent=None):
         """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
@@ -157,6 +149,8 @@ class QMatSim:
         :rtype: QAction
         """
 
+        #self.toolbar = self.iface.addToolBar("QMATSim")
+
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
@@ -170,12 +164,11 @@ class QMatSim:
 
         if add_to_toolbar:
             # Adds plugin icon to Plugins toolbar
-            self.iface.addToolBarIcon(action)
+            #self.iface.addToolBarIcon(action)
+            self.toolbar.addAction(action)
 
         if add_to_menu:
-            self.iface.addPluginToVectorMenu(
-                self.menu,
-                action)
+            self.iface.addPluginToVectorMenu(self.menu, action)
 
         self.actions.append(action)
 
@@ -183,70 +176,112 @@ class QMatSim:
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
+        #icon_path = ':/plugins/q_mat_sim/icon.png'
 
-        icon_path = ':/plugins/q_mat_sim/icon.png'
-        self.add_action(
-            icon_path,
-            text=self.tr(u'QMatSim'),
-            callback=self.run,
+        self.add_action(':/plugins/q_mat_sim/icons/iconNT.png',
+            text=self.tr(u'QMatSim Network'),
+            callback=self.runNetworkEditor,
             parent=self.iface.mainWindow())
-
+        
+        self.add_action(':/plugins/q_mat_sim/icons/iconAG.png',
+            text=self.tr(u'QMatSim Agents'),
+            callback=self.runAgentEditor,
+            parent=self.iface.mainWindow())
+    
         # will be set False in run()
         self.first_start = True
+        self.ntfirst_start = True
+        self.agfirst_start = True
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
             self.iface.removePluginVectorMenu(
-                self.tr(u'&QMatSim'),
-                action)
+                self.tr(u'&QMatSim'),action)
             self.iface.removeToolBarIcon(action)
+        
+    def runNetworkEditor(self): # run Network creator ui
 
-    def run(self):
-        """Run method that performs all the real work"""
-        # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        if self.first_start == True:
-            self.first_start = False
-            self.dlg = QMatSimDialog()
+        if self.ntfirst_start == True:
+            self.ntfirst_start = False
+            self.ntdlg = QMatSimDialog(mode='network')
 
-            self.dlg.pushButton_create.clicked.connect(self.startTask)
-            self.dlg.pushButton_saveFile.clicked.connect(self.saveXmlFile)
+            self.ntdlg.pushButton_create.clicked.connect(self.startNetworkTask)
+            self.ntdlg.pushButton_saveFile.clicked.connect(self.saveXmlFile)
 
-            self.dlg.pushButton_createNodes.clicked.connect(self.createNodes)
-            self.dlg.pushButton_createLinks.clicked.connect(self.createLinks)
+            self.ntdlg.pushButton_createNodes.clicked.connect(self.createNodes)
+            self.ntdlg.pushButton_createLinks.clicked.connect(self.createLinks)
+
+        if (self.dlg):
+            return 
+        
+        self.dlg = self.ntdlg
             
-            self.doc = None
-            self.NodesResult = None
-            self.LinksResult = None
+        self.doc = None
+        self.NodesResult = None
+        self.LinksResult = None
 
         self.dlg.resetGUI()
 
-        # show the dialog
         self.dlg.show()
-        # Run the dialog event loop
         result = self.dlg.exec_()
         # See if OK was pressed
-        if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+        #if result:
+        self.dlg = None
+    
+    def runAgentEditor(self): # run Agent generator ui
 
+        if self.agfirst_start == True:
+            self.agfirst_start = False
+            self.agdlg = QMatSimDialog(mode='agents')
 
-    def createLinks(self): # create line layer for links
+            self.agdlg.pushButton_create.clicked.connect(self.startAgentTask)
+            self.agdlg.pushButton_saveFile.clicked.connect(self.saveXmlFile)
+
+            self.agdlg.pushButton_createNodes.clicked.connect(self.createNodes)
+            self.agdlg.pushButton_createLinks.clicked.connect(self.createLinks)
+            self.agdlg.pushButton_createActs.clicked.connect(self.createActs)
+        
+        if (self.dlg):
+            return 
+        
+        self.dlg = self.agdlg
+            
+        self.doc = None
+        self.NodesResult = None
+        self.LinksResult = None
+
+        self.dlg.resetGUI()
+
+        self.dlg.show()
+        result = self.dlg.exec_()
+        # See if OK was pressed
+        #if result:
+        self.dlg = None
+    
+    def createActs(self): # create point acts layer
+        vectorLayer = QgsVectorLayer("Point", "nodes", "memory") # create temporary layer
+        vectorLayer.setCrs(QgsCoordinateReferenceSystem("EPSG:3857"))
+        vectorLayer.dataProvider().addAttributes( [QgsField('actType',  QVariant.Int) ])
+        vectorLayer.updateFields()
+
+        QgsProject.instance().addMapLayer(vectorLayer)
+        self.dlg.mMapLayerComboBox_nodes.setLayer(vectorLayer)
+
+    def createLinks(self): # create line links layer
         vectorLayer = QgsVectorLayer("LineString", "links", "memory") # create temporary layer
         vectorLayer.setCrs(QgsCoordinateReferenceSystem("EPSG:3857"))
         vectorLayer.dataProvider().addAttributes( [QgsField('id',           QVariant.Int)] )
         vectorLayer.dataProvider().addAttributes( [QgsField('freespeed',    QVariant.Double)] )
         vectorLayer.dataProvider().addAttributes( [QgsField('capacity',     QVariant.Int)] )
         vectorLayer.dataProvider().addAttributes( [QgsField('permlanes',    QVariant.Int)] )
-        vectorLayer.dataProvider().addAttributes( [QgsField('_oneway',    QVariant.Int)] )
+        vectorLayer.dataProvider().addAttributes( [QgsField('oneway',    QVariant.Int)] )
         vectorLayer.updateFields()
 
         QgsProject.instance().addMapLayer(vectorLayer)
         self.dlg.mMapLayerComboBox_links.setLayer(vectorLayer)
 
-    def createNodes(self): # create point layer for nodes
+    def createNodes(self): # create point nodes layer
         vectorLayer = QgsVectorLayer("Point", "nodes", "memory") # create temporary layer
         vectorLayer.setCrs(QgsCoordinateReferenceSystem("EPSG:3857"))
         vectorLayer.dataProvider().addAttributes( [QgsField('id',  QVariant.Int) ])
@@ -254,9 +289,8 @@ class QMatSim:
 
         QgsProject.instance().addMapLayer(vectorLayer)
         self.dlg.mMapLayerComboBox_nodes.setLayer(vectorLayer)
-        
-
-    def startTask(self): # start xml tasks
+    
+    def startNetworkTask(self): # points-lines to node-link MATSim xml task
         self.dlg.progressBar.setValue(0)
         self.dlg.textEdit_xmlOutput.clear()
         self.dlg.textEdit_log.clear()
@@ -269,24 +303,49 @@ class QMatSim:
         root.setAttribute('name', "equil test network")
         self.doc.appendChild(root)
 
-        taskParams = self.dlg.getSettings() ## dict
+        NetworkTaskParams = self.dlg.getSettings() ## dict of network creation settings
 
-        newTask = NodeXmlTask(self.doc, self.dlg.mMapLayerComboBox_nodes.currentLayer(), taskParams)
-        newTask.printLog.connect(self.dlg.addLogMessage)
+        newTask = NodeXmlTask(self.doc, self.dlg.mMapLayerComboBox_nodes.currentLayer(), NetworkTaskParams)
+        newTask.printLog.connect(self.printLog)
         self.task_manager.addTask(newTask)
 
-        newTask = LinkXmlTask(self.doc, self.dlg.mMapLayerComboBox_links.currentLayer(), self.dlg.mMapLayerComboBox_nodes.currentLayer(), taskParams)
-        newTask.printLog.connect(self.dlg.addLogMessage)
+        newTask = LinkXmlTaskV2(self.doc, self.dlg.mMapLayerComboBox_links.currentLayer(), self.dlg.mMapLayerComboBox_nodes.currentLayer(), NetworkTaskParams)
+        newTask.printLog.connect(self.printLog)
         self.task_manager.addTask(newTask)
+    
+    def startAgentTask(self): # points-lines + points to agents MATSim xml task
+        self.dlg.progressBar.setValue(0)
+        self.dlg.textEdit_xmlOutput.clear()
+        self.dlg.textEdit_log.clear()
 
-    def statusChanged(self, taskId, status): # task status changed
+        self.doc = QtXml.QDomDocument()
+
+        root = self.doc.createElement("plans") # QDomElement
+        root.setAttribute('xml:lang', "de-CH")
+        self.doc.appendChild(root)
+
+        NetworkTaskParams = self.dlg.getSettings() ## dict of network creation settings
+        AgentTaskParams = self.dlg.getAgentSettings() ## dict of agent generation settings
+
+        createArrTask = NetworkArrayTask(self.dlg.mMapLayerComboBox_links.currentLayer(), self.dlg.mMapLayerComboBox_nodes.currentLayer(), NetworkTaskParams)
+        createArrTask.printLog.connect(self.printLog)
+        self.task_manager.addTask(createArrTask)
+
+    def printLog(self, string):
+        self.dlg.textEdit_log.append(string)
+
+    def statusChanged(self, taskId, status): # catch statuses of running tasks
         if (status == 3):
             if (self.task_manager.task(taskId).description() == LINE_LINK_XML_TASK_DESCRIPTION):
                 self.LinksResult = self.task_manager.task(taskId).resultDom
+
             if (self.task_manager.task(taskId).description() == POINT_NODE_XML_TASK_DESCRIPTION):
                 self.NodesResult = self.task_manager.task(taskId).resultDom
 
-            if (self.NodesResult != None and self.LinksResult != None):
+            if (self.NodesResult != None and self.LinksResult != None): # node and link xml task finished with result
+                
+                self.iface.messageBar().pushMessage("Success", "XML Network created", level=Qgis.Success, duration=6)
+
                 root = self.doc.elementsByTagName("network").item(0) # QDomElement
 
                 root.appendChild(self.NodesResult)
@@ -296,25 +355,49 @@ class QMatSim:
                 self.dlg.textEdit_xmlOutput.append(self.doc.toString())
                 
                 self.dlg.pushButton_saveFile.setEnabled(True)
+
+            if (self.task_manager.task(taskId).description() == LINE_LINK_NMP_TASK_DESCRIPTION):
+
+                newTask = AgentXmlTask(self.doc, self.dlg.mMapLayerComboBox_nodes.currentLayer(), 
+                                       self.dlg.mMapLayerComboBox_acts.currentLayer(),
+                                       self.task_manager.task(taskId).matrix,
+                                       self.dlg.getAgentSettings(),
+                                       self.dlg.getSettings()) 
+                
+                newTask.printLog.connect(self.printLog)
+                self.task_manager.addTask(newTask)
+            
+            if (self.task_manager.task(taskId).description() == AGENT_XML_TASK_DESCRIPTION):
+
+                self.iface.messageBar().pushMessage("Success", "XML Population created", level=Qgis.Success, duration=6)
+
+                self.dlg.textEdit_xmlOutput.append('<?xml version="1.0" encoding="utf-8"?>')
+                self.dlg.textEdit_xmlOutput.append(self.doc.toString())
+
+                self.dlg.pushButton_saveFile.setEnabled(True)
+
                 
         if (status == 4):
+            self.iface.messageBar().pushMessage("Critical", "Error occured during task", level=Qgis.Critical, duration=6)
             self.dlg.tabWidget_xml.setCurrentWidget(self.dlg.tab_log)
             for task in self.task_manager.activeTasks():
-                    task.cancel()
+                task.cancel()
         
-    def taskProgresChanged(self, task_id, progress): # change progressbar
+    def taskProgresChanged(self, task_id, progress): # task progress changed to progressbar
         self.dlg.progressBar.setValue(int(progress))
 
-    def saveXmlFile(self): # save result to xml file
+    def saveXmlFile(self): # export current document to xml file
         file = QFile(self.dlg.mQgsFileWidget.filePath())
-        file.open(QIODevice.WriteOnly | QIODevice.Text)
-        stream = QTextStream(file)
-        stream << '<?xml version="1.0" encoding="utf-8"?>\n'
-        stream << '<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v1.dtd">\n'
-        stream << self.doc.toString()
-        file.close()
 
-            
-    
+        if (file):
+            file.open(QIODevice.WriteOnly | QIODevice.Text)
+            stream = QTextStream(file)
+            stream << '<?xml version="1.0" encoding="utf-8"?>\n'
+            if (self.dlg == self.ntdlg):
+                stream << '<!DOCTYPE network SYSTEM "http://www.matsim.org/files/dtd/network_v1.dtd">\n'
+            else:
+                stream << '<!DOCTYPE plans SYSTEM "http://www.matsim.org/files/dtd/plans_v4.dtd">\n'
+            stream << self.doc.toString()
+            file.close()
 
-        
+            self.iface.messageBar().pushMessage("Saved", "XML File saved", level=Qgis.Success, duration=6)
