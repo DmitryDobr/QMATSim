@@ -32,9 +32,6 @@ from qgis.core import (
     QgsApplication
 )
 
-import numpy as np 
-import heapq
-
 # from qgis.PyQt import QtXml
 from qgis.PyQt.QtGui import QTextCursor, QSyntaxHighlighter, QFont, QTextCharFormat, QColor, QIcon
 from qgis.PyQt.QtCore import Qt, QRegularExpression, QRegularExpressionMatchIterator, QObject, QRegExp, QTime
@@ -140,7 +137,6 @@ class QMatSimDialog(QtWidgets.QDialog):
         self.taskSettings = dict() # settings for XML tasks
         self.reloadSettings() # default reload
     
-
     def initActTableColumns(self):
         self.tableWidget_actTime.horizontalHeader().setResizeMode(0,QtWidgets.QHeaderView.Fixed)
         self.tableWidget_actTime.horizontalHeader().setResizeMode(1,QtWidgets.QHeaderView.Stretch)
@@ -245,8 +241,8 @@ class QMatSimDialog(QtWidgets.QDialog):
                 flag = False
                 break
 
-            timeList.append(self.tableWidget_actTime.cellWidget(i,1).time()) # min time of act
-            timeList.append(self.tableWidget_actTime.cellWidget(i,2).time()) # max time of act
+            timeList.append(QTime(0,0).secsTo(self.tableWidget_actTime.cellWidget(i,1).time())) # min time of act
+            timeList.append(QTime(0,0).secsTo(self.tableWidget_actTime.cellWidget(i,2).time())) # max time of act
 
             actParams[str(actName)] = timeList
 
@@ -256,11 +252,16 @@ class QMatSimDialog(QtWidgets.QDialog):
             self.agentSettings['ActCountMax']   = self.spinBox_actCountMax.value()    # maximum count of acts per plan
             self.agentSettings['LastFirstAct']  = self.checkBox_lastAct.isChecked()   # first act equals last
             self.agentSettings['FirstActHome']  = self.checkBox_firstActH.isChecked() # first act is 'h'
-            self.agentSettings['FirstActMin']   = self.timeEdit_firstActDurMin.time() # min time limit for first act end_time
-            self.agentSettings['FirstActMax']   = self.timeEdit_firstActDurMax.time() # max time limit for first act end_time
+            #self.agentSettings['FirstActMin']   = QTime(0,0).secsTo(self.timeEdit_firstActDurMin.time()) # min time limit for first act end_time
+            #self.agentSettings['FirstActMax']   = QTime(0,0).secsTo(self.timeEdit_firstActDurMax.time()) # max time limit for first act end_time
+            self.agentSettings['FirstActMinMax'] = list([QTime(0,0).secsTo(self.timeEdit_firstActDurMin.time()),
+                                                         QTime(0,0).secsTo(self.timeEdit_firstActDurMax.time())])
             self.agentSettings['ActMinMaxTime'] = actParams                           # time limits for acts type
 
-            print(self.agentSettings)
+            #print(QTime(0,0).secsTo(self.timeEdit_firstActDurMin.time()))
+            #print(QTime(0,0).secsTo(self.timeEdit_firstActDurMax.time()))
+
+            #print(self.agentSettings)
         
         return flag
 
