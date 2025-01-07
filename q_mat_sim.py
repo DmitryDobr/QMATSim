@@ -36,6 +36,7 @@ import os.path
 from .q_mat_sim_tasks import *
 from .q_mat_sim_tasks_agents import *
 
+
 from qgis.core import (
     Qgis,
     QgsVector,

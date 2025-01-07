@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>605</width>
-    <height>681</height>
+    <width>676</width>
+    <height>523</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -713,7 +713,7 @@ p, li { white-space: pre-wrap; }
                  </size>
                 </property>
                 <property name="minimum">
-                 <number>2</number>
+                 <number>3</number>
                 </property>
                </widget>
               </item>
@@ -745,10 +745,10 @@ p, li { white-space: pre-wrap; }
                  </size>
                 </property>
                 <property name="minimum">
-                 <number>2</number>
+                 <number>3</number>
                 </property>
                 <property name="value">
-                 <number>3</number>
+                 <number>4</number>
                 </property>
                </widget>
               </item>
